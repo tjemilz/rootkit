@@ -1,28 +1,38 @@
 ### Disclaimer ### 
 
-Ce projet est uniquement à but éducatif. En aucun cas, il ne saurait être utilisé pour effectuer des actions malveillantes sur un système que vous ne possédez pas. 
+This project is for educational purposes only. Under no circumstances should it be used to perform malicious actions on a system you do not own.
 
 
-### Descriptif ### 
+### Description ### 
 
-Ce projet a pour but de créér un rootkit minimaliste. Voici les différentes étapes : 
-- [ ]  **Comprendre la structure d'un fichier `.so` :** Réussir à compiler un simple fichier C en une bibliothèque partagée (`.so`).
-- [ ]  **Comprendre `LD_PRELOAD` :** Écrire une fonction `main` simple dans un exécutable C, puis écrire une petite fonction dans le `.so` qui est exécutée **avant** le `main` grâce à l'attribut `__attribute__((constructor))`. Valider le chargement.
-- [ ]  **Gestion des Symboles :** Utiliser la fonction **`dlsym`** avec l'argument spécial **`RTLD_NEXT`** pour obtenir le pointeur de la **vraie** fonction de la librairie standard (par exemple, la vraie `puts` de la `libc`).
-- [ ]  **Définir la Fonction Cible :** Identifier la fonction standard à intercepter pour filtrer le contenu de `/proc`. La fonction **`readdir`** (qui lit les entrées d'un répertoire) est la plus pertinente pour cacher les répertoires PID.
-- [ ]  **Créer la Fonction Surchargée (le Hook) :** Écrire votre propre version de `readdir` qui a exactement la même signature. Elle doit appeler l'**original** (le vrai `readdir` obtenu en 1.3) pour obtenir une entrée.
-- [ ]  **Tester le Filtrage Statique :** Implémenter la logique dans votre `readdir` surchargée pour vérifier si l'entrée de répertoire est un **PID statique prédéfini** (ex: `5000`). Si c'est le cas, ignorer cette entrée en bouclant et en appelant à nouveau l'original.
-- [ ]  **Test de Preuve de Concept :** Charger votre `.so` avec `LD_PRELOAD` sur un outil simple de liste de répertoires (`ls /proc`). Valider que le répertoire du PID statique (ex: `/proc/5000`) est bien invisible.
-- [ ]  **Récupération du PID à Cacher :** Modifier la fonction `constructor` (étape 1.2) pour récupérer le PID du processus à masquer. Une technique simple et robuste est de lire ce PID depuis une **variable d'environnement** (ex: `HIDE_ME_PID`)
-- [ ]  **Filtrage Dynamique :** Modifier la logique de la fonction `readdir` surchargée pour comparer l'entrée lue (`dirp->d_name`) avec le PID **dynamique** récupéré en 3.1.
-- [ ]  **Test du Rootkit Complet :** Créer un petit programme "lanceur" en C (ou un script shell) qui : 1) Lance le processus **cible** (celui que vous voulez cacher) en arrière-plan et note son PID. 2) Définit la variable `HIDE_ME_PID` avec ce PID. 3) Exécute l'outil de surveillance (`ps`, `top`) avec `LD_PRELOAD` pointant vers votre `.so`. Valider que le PID n'apparaît pas.
-- [ ]  **Gestion des Autorisations :** Ajouter une vérification simple pour que votre hook ne s'active que si un certain "mot de passe" ou une variable secrète est présente dans l'environnement. Cela empêche le hook de s'activer par erreur sur tous les programmes.
-- [ ]  **Nettoyage de l'Environnement :** Après avoir lu le PID à cacher, utiliser **`unsetenv`** pour supprimer la variable d'environnement (`HIDE_ME_PID`) de la mémoire du processus. Cela ajoute une couche de furtivité pour qu'un attaquant ne puisse pas trouver le PID caché en examinant les variables d'environnement.
+This project aims to create a minimalist rootkit. Here are the different steps:
+- [x]  **Understanding the `.so` File Structure:** Successfully compile a simple C file into a shared library (`.so`).
+- [x]  **Understanding `LD_PRELOAD`:** Write a simple `main` function in a C executable, then write a small function in the `.so` that executes **before** the `main` using the `__attribute__((constructor))` attribute. Validate the loading.
+- [x]  **Symbol Management:** Use the **`dlsym`** function with the special **`RTLD_NEXT`** argument to obtain the pointer to the **real** function from the standard library (for example, the real `puts` from `libc`).
+- [x]  **Define the Target Function:** Identify the standard function to intercept for filtering `/proc` content. The **`readdir`** function (which reads directory entries) is the most relevant for hiding PID directories.
+- [x]  **Create the Overloaded Function (the Hook):** Write your own version of `readdir` that has exactly the same signature. It must call the **original** (the real `readdir` obtained in step 3) to get an entry.
+- [x]  **Test Static Filtering:** Implement the logic in your overloaded `readdir` to check if the directory entry is a **predefined static PID** (e.g., `5000`). If so, ignore this entry by looping and calling the original again.
+- [x]  **Proof of Concept Test:** Load your `.so` with `LD_PRELOAD` on a simple directory listing tool (`ls /proc`). Validate that the static PID directory (e.g., `/proc/5000`) is indeed invisible.
+- [x]  **Retrieve the PID to Hide:** Modify the `constructor` function (step 2) to retrieve the PID of the process to hide. A simple and robust technique is to read this PID from an **environment variable** (e.g., `HIDE_ME_PID`).
+- [x]  **Dynamic Filtering:** Modify the logic of the overloaded `readdir` function to compare the read entry (`dirp->d_name`) with the **dynamic** PID retrieved in step 8.
+- [ ]  **Complete Rootkit Test:** Create a small "launcher" program in C (or a shell script) that: 1) Launches the **target** process (the one you want to hide) in the background and notes its PID. 2) Sets the `HIDE_ME_PID` variable with this PID. 3) Executes the monitoring tool (`ps`, `top`) with `LD_PRELOAD` pointing to your `.so`. Validate that the PID does not appear.
+- [x]  **Permission Management:** Add a simple verification so that your hook only activates if a certain "password" or secret variable is present in the environment. This prevents the hook from accidentally activating on all programs.
+- [x]  **Environment Cleanup:** After reading the PID to hide, use **`unsetenv`** to remove the environment variable (`HIDE_ME_PID`) from the process memory. This adds a layer of stealth so that an attacker cannot find the hidden PID by examining environment variables.
 
 
-### Résolution ### 
+### Usage ### 
 
-To test the function : 
-- Compile the program using make
-- Using a terminal : (to hide PID number 5000)
+To test the rootkit:
+- Compile the program using `make`
+- In a terminal, run the following command (to hide PID 5000):
+```bash
 ROOTKIT_PWD=password123 HIDE_ME_PID=5000 LD_PRELOAD=./hook.so ls /proc
+```
+
+### Features ###
+
+- ✅ Function hooking using `LD_PRELOAD`
+- ✅ Dynamic PID hiding via environment variable
+- ✅ Password protection to prevent accidental activation
+- ✅ Environment variable cleanup for stealth
+- ✅ Intercepts `readdir` to filter `/proc` entries
