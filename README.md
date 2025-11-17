@@ -19,3 +19,10 @@ Ce projet a pour but de créér un rootkit minimaliste. Voici les différentes �
 - [ ]  **Gestion des Autorisations :** Ajouter une vérification simple pour que votre hook ne s'active que si un certain "mot de passe" ou une variable secrète est présente dans l'environnement. Cela empêche le hook de s'activer par erreur sur tous les programmes.
 - [ ]  **Nettoyage de l'Environnement :** Après avoir lu le PID à cacher, utiliser **`unsetenv`** pour supprimer la variable d'environnement (`HIDE_ME_PID`) de la mémoire du processus. Cela ajoute une couche de furtivité pour qu'un attaquant ne puisse pas trouver le PID caché en examinant les variables d'environnement.
 
+
+### Résolution ### 
+
+To test the function : 
+- Compile the program using make
+- Using a terminal : (to hide PID number 5000)
+ROOTKIT_PWD=password123 HIDE_ME_PID=5000 LD_PRELOAD=./hook.so ls /proc
